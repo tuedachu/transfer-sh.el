@@ -77,6 +77,10 @@ Can be updated by calling function `transfer-sh-refresh-gpg-keys'.")
 (defvar transfer-sh-gpg-key-reference-separator " - "
   "Separator used in the reference name of all GPG keys.")
 
+(defvar transfer-sh-job-counter 0
+  "Number of transfer-sh jobs being currently run.
+This number is displayed in emacs mode line.")
+
 ;;;###autoload
 (defun transfer-sh-upload-file-async (local-filename &optional remote-filename)
   "Upload file LOCAL-FILENAME to transfer.sh in background.
@@ -132,6 +136,38 @@ If no REMOTE-FILE is given, LOCAL-FILENAME is used."
                           (buffer-string))))
     (kill-new transfer-link)
     (minibuffer-message "File %S uploaded: %s" filename-without-directory transfer-link)))
+
+(defun transfer-sh-add-job ()
+  "Add a job to `transfer-sh-job-counter' and display an
+indicator in emacs mode-line."
+  (when (> transfer-sh-job-counter 0)
+    (setq global-mode-string (remove (format "[transfer-sh: %d job%s"
+                                             transfer-sh-job-counter
+                                             (if (> transfer-sh-job-counter 1)
+                                                 "(s)]"
+                                               "]"))
+                                     global-mode-string)))
+  (setq transfer-sh-job-counter (+ transfer-sh-job-counter 1))
+  (setq global-mode-string (append global-mode-string
+                                   (list (propertize
+                                          (format "[transfer-sh: %d job%s"
+                                                  transfer-sh-job-counter
+                                                  (if (> transfer-sh-job-counter 1)
+                                                      "(s)]"
+                                                    "]"))
+                                          'face
+                                          '(:background "aqua"))))))
+
+(defun transfer-sh-delete-job ()
+  "Remove a job from `transfer-sh-job-counter' and change
+the indicator in emacs mode-line accordingly."
+  (setq global-mode-string (remove (format "[transfer-sh: %d job%s"
+                                           transfer-sh-job-counter
+                                           (if (> transfer-sh-job-counter 1)
+                                               "(s)]"
+                                             "]"))
+                                   global-mode-string))
+  (setq transfer-sh-job-counter (- transfer-sh-job-counter 1)))
 
 ;;;###autoload
 (defun transfer-sh-upload (async)
