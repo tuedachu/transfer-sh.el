@@ -1,4 +1,4 @@
-;;; transfer-sh.el --- Simple interface for sending buffer contents to transfer.sh
+;;; transfer-sh.el --- Simple interface for sending buffer contents to transfer.sh  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2016 Steffen Roskamp
 
