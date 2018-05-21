@@ -137,6 +137,67 @@ If no REMOTE-FILE is given, LOCAL-FILENAME is used."
     (kill-new transfer-link)
     (minibuffer-message "File %S uploaded: %s" filename-without-directory transfer-link)))
 
+
+(defun transfer-sh-run-upload-agent-copy (local-filename &optional remote-filename insert-url)
+  "Upload LOCAL-FILENAME to transfer.sh using `transfer-sh-upload-agent-command'.
+
+If no REMOTE-FILE is given, LOCAL-FILENAME is used.  If
+EDIT-BUFFER is non-nil, insert a the transfer-sh link at point. A
+tag <...> is first inserted and replaced by the url when the
+upload is completed."
+  (interactive "f")
+  (let* ((filename-without-directory (file-name-nondirectory local-filename))
+         (remote-filename (or remote-filename filename-without-directory))
+         (tmp-buffer  (generate-new-buffer "*test*"))
+         (tag "<test>")
+         (buffer-to-edit (current-buffer))
+         (transfer-link))
+    (when insert-url
+      (insert tag))
+    (setq p (apply 'start-process
+                   "transfer-sh-upload-job"
+                   tmp-buffer
+                   transfer-sh-upload-agent-command
+                   (append transfer-sh-upload-agent-arguments
+                           (list local-filename
+                                 (concat "https://transfer.sh/" (url-encode-url remote-filename))))))
+    (transfer-sh-add-job)
+    (set-process-sentinel p (lambda (process event)
+                              ;; TODO test event
+                              (with-current-buffer tmp-buffer
+                                (setq transfer-link
+                                      (format "%s" (buffer-substring-no-properties (point-min)
+                                                                                   (point-max))))
+                                (kill-new transfer-link nil))
+                              (kill-buffer tmp-buffer)
+                              (when insert-buffer
+                                (funcall 'transfer-sh-replace-tag-in-buffer
+                                         buffer-to-edit
+                                         tag
+                                         transfer-link))
+                              (transfer-sh-delete-job)
+                              ;; TODO add single hook passing transfer-link as argument
+                              ;; callback
+                              (minibuffer-message "File %S uploaded: %s" filename-without-directory transfer-link)))))
+
+
+(setq global-mode-string nil)
+
+(defun transfer-sh-replace-tag-in-buffer (buffer-or-name tag link)
+  "Replace TAG by LINK in buffer BUFFER-OR-NAME.
+
+BUFFER-OR-NAME can be a buffer or a buffer-name.
+TAG is a string with properties.
+LINK is a string."
+  (with-current-buffer buffer-or-name
+    (save-excursion
+      (goto-char (point-min))
+      (search-forward tag
+                      nil
+                      t)
+      (backward-kill-sexp)
+      (insert "transfer-link"))))
+
 (defun transfer-sh-add-job ()
   "Add a job to `transfer-sh-job-counter' and display an
 indicator in emacs mode-line."
